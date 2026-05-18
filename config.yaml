@@ -1,0 +1,29 @@
+server:
+  host: "0.0.0.0"
+  port: 5000
+  workers: 4
+  debug: false
+
+conversion:
+  max_file_size: "50MB"
+  timeout: 300
+  quality: "high"
+  default_format: "pdf"
+  batch_limit: 100
+
+storage:
+  upload_dir: "./uploads"
+  output_dir: "./outputs"
+  auto_cleanup: true
+  retention_hours: 24
+
+security:
+  api_key_enabled: false
+  rate_limit: "100/hour"
+  cors_origins: "*"
+
+logging:
+  level: "INFO"
+  file: "./logs/converter.log"
+  max_size: "10MB"
+  backup_count: 5
