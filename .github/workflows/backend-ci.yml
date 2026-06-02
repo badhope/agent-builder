@@ -1,0 +1,106 @@
+name: backend-ci
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "backend/**"
+      - "pyproject.toml"
+      - "Dockerfile"
+      - "Dockerfile.dev"
+      - "entrypoints/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "pyproject.toml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint & format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -U pip
+      - run: pip install ruff black isort bandit pip-audit
+      - run: ruff check backend
+      - run: black --check backend
+      - run: isort --check-only backend
+      - run: bandit -r backend -lll
+
+  typecheck:
+    name: Type check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: mypy backend
+
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: docconv
+          POSTGRES_PASSWORD: docconv
+          POSTGRES_DB: docconv_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U docconv"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgresql+asyncpg://docconv:docconv@localhost:5432/docconv_test
+      DATABASE_URL_SYNC: postgresql+psycopg2://docconv:docconv@localhost:5432/docconv_test
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_BROKER_URL: redis://localhost:6379/1
+      CELERY_RESULT_BACKEND: redis://localhost:6379/2
+      S3_ENDPOINT_URL: http://localhost:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_BUCKET: docconv-test
+      S3_REGION: us-east-1
+      STORAGE_BACKEND: local
+      JWT_KEYS_DIR: /tmp/jwt-keys
+      SECRET_KEY: test-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: |
+          sudo apt-get update && sudo apt-get install -y libreoffice-core libreoffice-writer tesseract-ocr ghostscript
+      - run: pytest -q --cov=backend/app --cov-report=xml --cov-report=term
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: coverage.xml

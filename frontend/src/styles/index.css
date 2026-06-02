@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-feature-settings:
+    "cv02",
+    "cv03",
+    "cv04",
+    "cv11";
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md
+      px-4 py-2 text-sm font-medium transition
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800;
+  }
+  .btn-secondary {
+    @apply btn bg-slate-100 text-slate-900 hover:bg-slate-200
+      dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700;
+  }
+  .btn-ghost {
+    @apply btn text-slate-700 hover:bg-slate-100
+      dark:text-slate-200 dark:hover:bg-slate-800;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700;
+  }
+  .input {
+    @apply block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm
+      placeholder:text-slate-400
+      focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500
+      disabled:cursor-not-allowed disabled:opacity-50
+      dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100;
+  }
+  .card {
+    @apply rounded-lg border border-slate-200 bg-white shadow-sm
+      dark:border-slate-800 dark:bg-slate-900;
+  }
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+}

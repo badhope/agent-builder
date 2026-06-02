@@ -1,0 +1,331 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "docformatconverter"
+version = "1.0.0"
+description = "Lightweight multi-format batch document converter with secure async API"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "badhope" }]
+keywords = ["document", "converter", "pdf", "docx", "pandoc", "libreoffice"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    # Web framework
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.34.0",
+    "python-multipart==0.0.27",
+
+    # Data validation & settings
+    "pydantic==2.10.4",
+    "pydantic-settings==2.7.0",
+    "email-validator==2.2.0",
+
+    # Database
+    "sqlalchemy[asyncio]==2.0.36",
+    "asyncpg==0.30.0",
+    "alembic==1.14.0",
+    "psycopg[binary]==3.2.3",
+
+    # Redis / queue
+    "redis[hiredis]==5.2.1",
+    "celery[redis]==5.4.0",
+    "arq==0.26.3",
+
+    # Security
+    "argon2-cffi==23.1.0",
+    "pyjwt[crypto]==2.12.0",
+    "cryptography==44.0.0",
+    "python-jose[cryptography]==3.4.0",
+
+    # Rate limiting
+    "slowapi==0.1.9",
+    "limits==3.13.0",
+
+    # HTTP / WebSocket clients (server-side use)
+    "httpx==0.28.1",
+    "websockets==14.1",
+    "aiofiles==24.1.0",
+
+    # File type detection
+    "python-magic==0.4.27",
+    "filetype==1.2.0",
+
+    # Document processing — modern maintained forks
+    "pypdf==5.1.0",
+    "pdfplumber==0.11.4",
+    "pdf2image==1.17.0",
+    "pypandoc==1.13",
+    "python-docx==1.1.2",
+    "openpyxl==3.1.5",
+    "xlrd==2.0.1",
+    "python-pptx==1.0.2",
+    "odfpy==1.4.1",
+    "ebooklib==0.18",
+    "markdownify==1.0.0",
+
+    # Data formats
+    "pyyaml==6.0.2",
+    "lxml==5.3.0",
+    "pandas==2.2.3",
+    "xmltodict==0.14.2",
+    "tomli==2.2.1; python_version < '3.11'",
+
+    # Markup
+    "markdown==3.7",
+    "beautifulsoup4==4.12.3",
+    "bleach==6.2.0",
+
+    # Image
+    "Pillow==11.1.0",
+    "pillow-heif==0.21.0",
+    "cairosvg==2.9.0",
+
+    # HTML → PDF
+    "weasyprint==63.1",
+
+    # Storage
+    "boto3==1.35.84",
+    "botocore==1.35.84",
+
+    # Anti-virus (optional at runtime)
+    "pyclamd==0.4.0",
+
+    # Observability
+    "structlog==24.4.0",
+    "prometheus-client==0.21.1",
+    "opentelemetry-api==1.29.0",
+    "opentelemetry-sdk==1.29.0",
+    "opentelemetry-instrumentation-fastapi==0.50b0",
+    "opentelemetry-instrumentation-sqlalchemy==0.50b0",
+    "opentelemetry-instrumentation-redis==0.50b0",
+    "opentelemetry-instrumentation-celery==0.50b0",
+    "opentelemetry-instrumentation-httpx==0.50b0",
+    "opentelemetry-exporter-otlp-proto-grpc==1.29.0",
+    "sentry-sdk[fastapi]==2.19.2",
+
+    # CORS / misc
+    "pyyaml==6.0.2",
+    "python-dotenv==1.2.2",
+    "tenacity==9.0.0",
+    "orjson==3.11.5",
+    "pybase64==1.4.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.4",
+    "pytest-asyncio==0.24.0",
+    "pytest-cov==6.0.0",
+    "httpx==0.28.1",
+    "respx==0.22.0",
+    "factory-boy==3.3.1",
+    "freezegun==1.5.1",
+    "black==24.10.0",
+    "ruff==0.8.4",
+    "mypy==1.13.0",
+    "bandit==1.7.10",
+    "pip-audit==2.7.3",
+    "pre-commit==4.0.1",
+    "types-PyYAML",
+    "types-python-dateutil",
+]
+worker = [
+    # Workers may run without web server deps; explicit subset
+    "celery[redis]==5.4.0",
+    "redis[hiredis]==5.2.1",
+    "sqlalchemy[asyncio]==2.0.36",
+    "asyncpg==0.30.0",
+    "structlog==24.4.0",
+    "pydantic==2.10.4",
+    "pydantic-settings==2.7.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/badhope/DocFormatConverter"
+Issues = "https://github.com/badhope/DocFormatConverter/issues"
+Changelog = "https://github.com/badhope/DocFormatConverter/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+where = ["backend"]
+include = ["app*"]
+exclude = ["tests*", "frontend*", "deploy*", "docs*", "spec*", "archive*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.git
+  | \.venv
+  | build
+  | dist
+  | var
+  | archive
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["archive", "var", "build", "dist", ".venv"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+    "N",    # pep8-naming
+    "S",    # flake8-bandit (security)
+    "RUF",  # ruff-specific
+    "ASYNC",# flake8-async
+    "TID",  # tidy imports
+    "PT",   # pytest style
+    "Q",    # flake8-quotes
+    "SIM",  # flake8-simplify
+    "PTH",  # use pathlib
+    "ERA",  # eradicate commented code
+    "PL",   # pylint
+    "TRY",  # tryceratops
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "PLR0913",# too many arguments
+    "TRY003", # long messages outside exception class
+    "B008",   # function call in default argument (FastAPI uses this a lot)
+    "PLC0415",# lazy imports for optional dependencies (intentional)
+    "PLR2004",# magic numbers (HTTP status codes etc.)
+    "PLR0911",# too many return statements
+    "PLR0915",# too many statements
+    "SIM105", # contextlib.suppress style preference
+    "S104",   # bind to all interfaces (normal for Docker)
+    "S110",   # try-except-pass (best-effort operations)
+    "S112",   # try-except-continue (best-effort operations)
+    "TRY300", # try-else style preference
+    "B007",   # unused loop variable
+    "ASYNC230",# blocking I/O in async (file operations)
+    "PTH",    # prefer pathlib (open() is used in sync helpers)
+    "PLW0603",# global statement (singleton pattern, intentional)
+    "PLW2901",# with-statement variable overwrite (Pillow pattern)
+    "RUF012", # mutable class attribute (SQLAlchemy mapper_args)
+    "RUF002", # docstring ambiguous chars
+    "N806",   # variable naming (class-level imported names)
+    "S103",   # chmod permissive mask (intentional local storage setup)
+    "S314",   # XML parsing (input is already sanitized)
+    "S603",   # subprocess call (sandboxed)
+    "PLR0912",# too many branches
+    "N818",   # exception naming convention
+    "S105",   # hardcoded password string (enum values, schema defaults - false positive)
+    "S106",   # hardcoded password (test fixtures, intentional)
+    "TRY203", # re-raise exception handler (intentional for logging/cleanup)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "PLR2004", "N802", "N803", "B011", "TRY"]
+"app/migrations/**" = ["E", "F", "I", "N"]
+"alembic/**" = ["E", "F", "I", "N"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+warn_return_any = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+exclude = [
+    "archive/",
+    "var/",
+    "build/",
+    "dist/",
+    "alembic/versions/",
+    "frontend/",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "pdf2image.*",
+    "pypandoc.*",
+    "weasyprint.*",
+    "cairosvg.*",
+    "ebooklib.*",
+    "xlrd.*",
+    "magic.*",
+    "clamd.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--showlocals",
+    "--tb=short",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests that require external services",
+    "security: security-focused tests",
+]
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning:pkg_resources",
+    "ignore::DeprecationWarning:passlib",
+    "ignore::sqlalchemy.exc.SADeprecationWarning",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+omit = [
+    "app/migrations/*",
+    "app/main.py",
+    "app/__init__.py",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "\\.\\.\\.",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", "alembic/versions", "archive"]
+skips = ["B101"]  # assert used in tests
+
+[tool.pip-audit]
+strict = true

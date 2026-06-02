@@ -1,0 +1,42 @@
+# syntax=docker/dockerfile:1.7
+# Slim image that *only* ships LibreOffice, Pandoc, Tesseract and the system
+# font stack. Workers and the API both use it as a sidecar / base image for
+# any containers that need to run a converter.
+#
+# The base API image has a `CONVERTERS_IMAGE` env you can point at this one
+# for fully self-hosted deployments.
+
+FROM debian:bookworm-slim AS base
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    libreoffice-core \
+    libreoffice-writer \
+    libreoffice-calc \
+    libreoffice-impress \
+    libreoffice-draw \
+    libreoffice-common \
+    pandoc \
+    poppler-utils \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    tesseract-ocr-chi-sim \
+    ghostscript \
+    weasyprint \
+    imagemagick \
+    ffmpeg \
+    unpaper \
+    fonts-liberation \
+    fonts-dejavu \
+    fonts-noto \
+    fonts-noto-cjk \
+    fonts-noto-color-emoji \
+ && rm -rf /var/lib/apt/lists/*
+
+# Verify the toolchain.
+RUN libreoffice --version && pandoc --version | head -n1 && tesseract --version | head -n1
+
+CMD ["/bin/bash"]

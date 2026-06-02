@@ -1,0 +1,36 @@
+groups:
+  - name: docconv.rules
+    interval: 30s
+    rules:
+      - alert: DocconvHighErrorRate
+        expr: |
+          sum(rate(docconv_http_requests_total{status=~"5.."}[5m])) by (path)
+            / sum(rate(docconv_http_requests_total[5m])) by (path) > 0.05
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "High 5xx rate on {{ $labels.path }}"
+
+      - alert: DocconvQueueBacklog
+        expr: docconv_queue_depth{queue="conversions"} > 1000
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Conversion queue backlog > 1000"
+
+      - alert: DocconvConversionLatency
+        expr: |
+          histogram_quantile(0.95, sum by (le, target) (
+            rate(docconv_conversion_duration_seconds_bucket[5m])
+          )) > 120
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "p95 conversion latency > 2m for target {{ $labels.target }}"
+
+      - alert: DocconvWorkersDown
+        expr: docconv_worker_active == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "No active Celery workers"

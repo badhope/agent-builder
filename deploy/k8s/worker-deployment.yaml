@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docconv-worker
+  namespace: docformatconverter
+spec:
+  replicas: 4
+  selector:
+    matchLabels: { app: docconv-worker }
+  template:
+    metadata:
+      labels: { app: docconv-worker }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: worker
+          image: ghcr.io/badhope/docformatconverter/converters:1.0.0
+          imagePullPolicy: IfNotPresent
+          command: ["celery"]
+          args:
+            - "-A"
+            - "app.workers.celery_app"
+            - "worker"
+            - "--loglevel=INFO"
+            - "--concurrency=4"
+            - "-Q"
+            - "conversions,webhooks,maintenance"
+          envFrom:
+            - secretRef: { name: docconv-secrets }
+            - configMapRef: { name: docconv-config }
+          resources:
+            requests: { cpu: 500m, memory: 1Gi  }
+            limits:   { cpu: 4,    memory: 4Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docconv-worker
+  namespace: docformatconverter
+spec:
+  selector: { app: docconv-worker }
+  clusterIP: None
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: docconv-worker
+  namespace: docformatconverter
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: docconv-worker
+  minReplicas: 2
+  maxReplicas: 16
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }

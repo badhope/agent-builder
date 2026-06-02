@@ -1,0 +1,37 @@
+{
+  "title": "DocFormatConverter — API",
+  "schemaVersion": 38,
+  "tags": ["docconv", "api"],
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Request rate",
+      "targets": [
+        { "expr": "sum by (status) (rate(docconv_http_requests_total[1m]))", "legendFormat": "{{status}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Latency p50 / p95 / p99",
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum by (le) (rate(docconv_http_request_duration_seconds_bucket[5m])))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(docconv_http_request_duration_seconds_bucket[5m])))", "legendFormat": "p95" },
+        { "expr": "histogram_quantile(0.99, sum by (le) (rate(docconv_http_request_duration_seconds_bucket[5m])))", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Conversions by target",
+      "targets": [
+        { "expr": "sum by (target) (rate(docconv_conversions_total[5m]))", "legendFormat": "{{target}}" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Queue depth",
+      "targets": [
+        { "expr": "docconv_queue_depth{queue=\"conversions\"}" }
+      ]
+    }
+  ]
+}

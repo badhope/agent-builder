@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1.7
+# Dev image: full source, hot-reload, debug enabled, no LibreOffice (use the
+# `converters` compose profile if you want it).
+FROM python:3.12-slim AS dev
+
+ENV PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential gcc libpq-dev libffi-dev libssl-dev libxml2-dev libxslt1-dev \
+    zlib1g-dev libjpeg-dev libpng-dev libtiff-dev libwebp-dev libheif-dev \
+    libpango1.0-dev libcairo2-dev pkg-config rustc cargo \
+    ca-certificates curl tini \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv && /opt/venv/bin/pip install --upgrade pip wheel setuptools
+
+WORKDIR /app
+COPY pyproject.toml ./
+COPY backend/ ./backend/
+RUN /opt/venv/bin/pip install -e ".[dev]"
+
+COPY entrypoints/ /app/entrypoints/
+EXPOSE 8000
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/app/entrypoints/entrypoint.sh"]
+CMD ["api"]

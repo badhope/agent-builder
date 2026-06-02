@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docconv-beat
+  namespace: docformatconverter
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: docconv-beat }
+  template:
+    metadata:
+      labels: { app: docconv-beat }
+    spec:
+      containers:
+        - name: beat
+          image: ghcr.io/badhope/docformatconverter/api:1.0.0
+          command: ["celery"]
+          args:
+            - "-A"
+            - "app.workers.celery_app"
+            - "beat"
+            - "--loglevel=INFO"
+          envFrom:
+            - secretRef: { name: docconv-secrets }
+            - configMapRef: { name: docconv-config }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits:   { cpu: 200m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docconv-beat
+  namespace: docformatconverter
+spec:
+  selector: { app: docconv-beat }
+  clusterIP: None

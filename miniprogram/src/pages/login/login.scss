@@ -1,0 +1,54 @@
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 48px 24px;
+}
+
+.login-card {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 48px 32px;
+  width: 100%;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+}
+
+.login-title {
+  display: block;
+  font-size: 40px;
+  font-weight: 700;
+  color: #333333;
+  margin-bottom: 8px;
+}
+
+.login-subtitle {
+  display: block;
+  font-size: 26px;
+  color: #999999;
+  margin-bottom: 40px;
+}
+
+.form-group {
+  margin-bottom: 32px;
+}
+
+.form-label {
+  display: block;
+  font-size: 26px;
+  color: #666666;
+  margin-bottom: 12px;
+}
+
+.btn-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.login-footer {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 32px;
+  font-size: 26px;
+}

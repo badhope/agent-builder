@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docconv-api
+  namespace: docformatconverter
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app: docconv-api }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  template:
+    metadata:
+      labels: { app: docconv-api }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: api
+          image: ghcr.io/badhope/docformatconverter/api:1.0.0
+          imagePullPolicy: IfNotPresent
+          args: ["api"]
+          envFrom:
+            - secretRef: { name: docconv-secrets }
+            - configMapRef: { name: docconv-config }
+          ports:
+            - { containerPort: 8000, name: http, protocol: TCP }
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits:   { cpu: 1,    memory: 1Gi  }
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /readyz,  port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: keys, mountPath: /app/keys, readOnly: false }
+      volumes:
+        - name: keys
+          emptyDir: { medium: Memory, sizeLimit: 8Mi }
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels: { app: docconv-api }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docconv-api
+  namespace: docformatconverter
+spec:
+  selector: { app: docconv-api }
+  ports:
+    - { name: http, port: 80, targetPort: 8000 }
+  type: ClusterIP

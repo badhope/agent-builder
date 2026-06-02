@@ -1,0 +1,6 @@
+# GitHub-specific settings
+*.md      linguist-documentation
+docs/     linguist-documentation
+SPEC*     linguist-documentation
+spec/     linguist-documentation
+archive/  -linguist-detected

@@ -1,0 +1,9 @@
+name: docformatconverter-converters
+
+services:
+  converters:
+    build:
+      context: .
+      dockerfile: Dockerfile.converters
+    image: docformatconverter/converters:latest
+    command: ["sleep", "infinity"]
