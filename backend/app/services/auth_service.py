@@ -10,6 +10,15 @@ Provides high-level flows consumed by the routes:
 * ``forgot_password`` / ``reset_password``
 * ``verify_email``
 * ``bootstrap_admin`` — idempotent first-start admin user.
+
+NOTE on the refresh-token rotation TODO: see ``refresh`` below. The
+short version is that we currently issue a *new* refresh token on
+``/auth/refresh`` but keep the old one valid until its own expiry,
+because we have no way to invalidate refresh tokens issued by
+worker pods that are no longer in the cluster. Replacing this with
+a JWKS + key-id (`kid`) scheme is the right move but requires a
+deploy + a data migration. Tracked in the project board under
+"Auth v2".
 """
 
 from __future__ import annotations

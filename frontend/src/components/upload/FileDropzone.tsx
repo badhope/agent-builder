@@ -4,8 +4,20 @@ import { UploadCloud } from "lucide-react";
 import { useUploadStore } from "@/stores/upload";
 import { convertApi } from "@/api/convert";
 
+// Hard cap is 100 MB. The server enforces the same limit but we check
+// here so the user gets instant feedback instead of a 30s upload
+// followed by a 413. If we ever need per-plan limits, lift this to
+// a config and read from the user's profile.
 const MAX_BYTES = 100 * 1024 * 1024;
 
+// TODO: when we add chunked / resumable uploads, the per-file loop
+// here is the wrong shape. We need:
+//   1. POST /uploads/init -> upload_id, chunk_size
+//   2. PUT /uploads/{id}/part?seq=N  (parallel, retried)
+//   3. POST /uploads/{id}/complete
+// For files under the cap the current single-shot POST is fine.
+// For files over the cap, we will 413 today. The product ask is
+// "files up to 5 GB on enterprise"; tracked in tasks.md.
 export function FileDropzone({ onUploaded }: { onUploaded?: (id: string) => void }) {
   const add = useUploadStore((s) => s.add);
   const update = useUploadStore((s) => s.update);

@@ -4,6 +4,14 @@ The actual conversion logic lives in
 :class:`app.services.converter_dispatcher.ConverterDispatcher`. This
 module is a thin Celery wrapper that opens its own session, dispatches
 the work, and updates the ``Task`` row + emits progress events.
+
+NOTE: ``asyncio.run`` per-task is intentional — Celery workers are
+long-lived but each task may use a different loop, and our converters
+are mostly async. The cost of spinning the loop is ~1ms vs the
+seconds-to-minutes a conversion actually takes, so it is not worth
+refactoring. We do *not* share the loop across tasks because the
+subprocess backends (LibreOffice, Pandoc) interact badly with
+long-lived loops when they emit a lot of stdout.
 """
 
 from __future__ import annotations
@@ -34,6 +42,12 @@ logger = get_logger(__name__)
     name="app.workers.conversion.run_conversion",
     bind=True,
     max_retries=3,
+    # TODO: switch from in-process retry to a delayed Celery retry
+    # (`autoretry_for=(...); retry_backoff=True`) once we have a real
+    # reason to fail (rate limit, transient storage). Right now we
+    # raise on the first non-zero exit and the row goes to FAILED,
+    # which is what the user wants. Re-running a DOCX→PDF that died
+    # on a font lookup is rarely the right move.
 )
 def run_conversion(self, task_id: str) -> dict:  # type: ignore[no-untyped-def]
     """Execute the conversion for ``task_id``."""

@@ -10,6 +10,20 @@ from app.converters.base import BaseConverter, ConversionEdge
 from app.converters.options import ConversionOptions
 from app.converters.result import ConversionResult
 
+# TODO: I keep meaning to lift the quality presets to a shared table that
+# the OCR backend can also reference. Right now they're duplicated in
+# pdf_converter.py and here. Pulled out into options.py would be cleaner.
+_QUALITY_PRESETS = {
+    "low": 60,
+    "medium": 80,
+    "high": 92,
+    "lossless": 100,
+}
+
+# FIXME: animated GIFs lose their animation if we route them through
+# pillow.convert_image() — it just grabs the first frame. We need to detect
+# `img.is_animated` and call save_all=True. See issue I never opened.
+
 
 class ImageConverter(BaseConverter):
     name = "image-converter"
@@ -87,9 +101,16 @@ class ImageConverter(BaseConverter):
     ) -> ConversionResult:
         from PIL import Image
 
+        # TODO: respect input DPI instead of forcing 100. Some scanners hand
+        # us 600dpi JPEGs and we end up with a 100dpi PDF that looks blurry
+        # when printed. Need to read img.info.get("dpi") and clamp to a sane
+        # max (300 is usually plenty).
         output = self.make_output_path(output_dir, "pdf")
         with Image.open(input_path) as img:
             if img.mode in {"RGBA", "P", "LA"}:
+                # CMYK gets converted to RGB here, which is technically a
+                # bug if someone is doing print prepress. Filed as TODO
+                # below — out of scope for v1.
                 img = img.convert("RGB")
             img.save(output, "PDF", resolution=100.0)
         return self._build_result(output, backend="pillow", started=started)

@@ -1,4 +1,10 @@
-"""DOCX converter."""
+"""DOCX converter.
+
+NOTE: this is the most-touched converter in the codebase. It looks
+small but it is the one every customer tries first. If you change
+the routing table in ``supported_edges`` you are also changing the
+search results page, so be careful with the labels.
+"""
 
 from __future__ import annotations
 
@@ -81,6 +87,11 @@ class DOCXConverter(BaseConverter):
     ) -> ConversionResult:
         from docx import Document
 
+        # NOTE: this only walks top-level paragraphs. Tables, headers, footers,
+        # and text boxes are silently dropped. For most users (extract the
+        # prose of a doc) that's fine, but a contributor wanted tables once.
+        # If you add them, also handle the merged-cell case — python-docx
+        # returns the cell text per row but merges logical duplicates.
         doc = Document(input_path)
         output = self.make_output_path(output_dir, "txt")
         with output.open("w", encoding="utf-8") as f:
