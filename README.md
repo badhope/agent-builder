@@ -1,258 +1,153 @@
 # DocFormatConverter
 
-[![CI](https://img.shields.io/badge/CI-passing-brightgreen)](.github/workflows)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Python](https://img.shields.io/badge/Python-3.12-3776AB)
-![Node](https://img.shields.io/badge/Node-20-339933)
+A document-conversion platform I've been building. Web UI + REST API + WeChat
+mini-program from a single Python backend. Started as a personal tool, grew
+into something a few teammates started using, so I tightened it up.
 
-A secure, production-grade **multi-format document conversion** platform.
+The reason for the WeChat/H5/Alipay version is that most users in our context
+aren't on desktop. Sharing a converted file via a tiny client is way more
+useful than asking them to log into a website.
 
-Convert documents, spreadsheets, presentations, images, ebooks and structured
-data between **40+ formats** with batch processing, async task tracking,
-webhook callbacks, JWT & API-Key auth, magic-byte validation, antivirus
-scanning, and real-time progress over WebSockets.
+## What works
 
-* **Backend** — FastAPI · Python 3.12 · SQLAlchemy 2.0 async · Celery · PostgreSQL · Redis · MinIO
-* **Frontend** — React 18 · TypeScript · Vite · Tailwind CSS · TanStack Query
-* **Workers** — Celery + beat, runs LibreOffice, Pandoc, Tesseract, WeasyPrint, Pillow, Pillow-HEIF
-* **Storage** — S3-compatible (MinIO in dev) or local filesystem, swappable via config
-* **Security** — Argon2id, RS256 JWT, scoped API keys, HMAC-signed download tokens, CSP, HSTS, rate limiting, audit log
+- Auth: email + password, JWT (access/refresh), email verify, TOTP 2FA, password reset
+- Files: upload, scan, store, stream back. S3/MinIO in prod, local disk in dev
+- Conversion: ~20 source/target pairs across document, spreadsheet, image, data
+- Backends used: LibreOffice, Pandoc, Pillow, WeasyPrint, Tesseract OCR
+- Batch: zip up to 200 files, get one zip back
+- Webhooks: HMAC-signed callbacks when a task finishes
+- Rate limit, audit log, idempotency keys
+- WebSocket for live progress
+- i18n (zh/en) on the web side
 
----
-
-## Features
-
-| Category | Formats | Backends |
-|----------|---------|----------|
-| Documents | PDF · DOCX · ODT · RTF · EPUB · TXT | LibreOffice · Pandoc · WeasyPrint |
-| Spreadsheets | XLSX · XLS · CSV · ODS | LibreOffice · openpyxl · pandas |
-| Presentations | PPTX · PPT · ODP | LibreOffice · python-pptx |
-| Markup | Markdown · HTML · LaTeX | Pandoc · WeasyPrint · markdown-it |
-| Structured | JSON · YAML · XML · CSV | Native parsers + jsonschema |
-| Images | PNG · JPG · WEBP · BMP · TIFF · SVG · HEIC | Pillow · Pillow-HEIF · CairoSVG · ImageMagick |
-| Ebooks | EPUB · MOBI · AZW3 | Pandoc · EbookLib |
-| OCR | Images → TXT / PDF (searchable) | Tesseract |
-
-* Async tasks with priority queue
-* Batch API (one batch, many files)
-* Webhook callbacks with HMAC-SHA256 signatures
-* Real-time progress over WebSockets
-* Per-user quotas & plan tiers (free / pro / enterprise)
-* Idempotency keys
-* Auto-expiry & garbage collection of outputs
-* Prometheus metrics, OpenTelemetry tracing, structured JSON logs
-* Full Kubernetes manifests + production docker-compose
-
----
-
-## Quick start (Docker)
+## Quick start (Docker, fastest)
 
 ```bash
-git clone https://github.com/badhope/DocFormatConverter.git
-cd DocFormatConverter
 cp .env.example .env
-docker compose -f docker-compose.dev.yml up
+cp backend/.env.example backend/.env   # if present; otherwise backend reads from .env at repo root
+make keys       # generates keys/jwt_{private,public}.pem
+docker compose -f docker-compose.dev.yml up -d
 ```
 
-The frontend is available at <http://localhost:5173>, the API at
-<http://localhost:8000/docs>.
+API on `:8000`, web on `:5173`, MinIO console on `:9001` (minio/minio123).
 
-Bootstrap the first admin user:
+## Quick start (local Python)
 
-```bash
-docker compose -f docker-compose.dev.yml run --rm api bootstrap-admin
-```
-
-Create an API key for scripting:
+If you don't want Docker:
 
 ```bash
-docker compose -f docker-compose.dev.yml run --rm api create-api-key admin@example.com
-```
-
----
-
-## Local development (without Docker)
-
-```bash
-# Backend
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-python -m app.scripts.generate_jwt_keys
+# start postgres + redis separately, or use docker compose just for those:
+docker compose -f docker-compose.dev.yml up -d postgres redis minio
 alembic -c backend/alembic.ini upgrade head
-uvicorn app.main:app --reload
-
-# Worker (separate terminal)
-celery -A app.workers.celery_app worker -l info -Q conversions,webhooks,maintenance
-
-# Beat (separate terminal)
-celery -A app.workers.celery_app beat -l info
-
-# Frontend
-cd frontend
-npm install
-npm run dev
+python -m backend.app.scripts.bootstrap_admin
+uvicorn app.main:app --reload --app-dir backend
 ```
 
----
-
-## API at a glance
-
-```http
-POST   /v1/auth/register
-POST   /v1/auth/login          # { access_token, refresh_token }
-POST   /v1/auth/refresh
-GET    /v1/auth/me
-
-POST   /v1/files/uploads       # multipart/form-data
-GET    /v1/files/{id}
-GET    /v1/files/{id}/download
-GET    /v1/files/{id}/signed-url
-
-POST   /v1/convert             # { source_file_id, target_format }
-POST   /v1/convert/sync        # small files only
-POST   /v1/batches             # batch with N file_ids
-
-GET    /v1/tasks
-GET    /v1/tasks/{id}
-GET    /v1/tasks/{id}/logs
-POST   /v1/tasks/{id}/cancel
-POST   /v1/tasks/{id}/retry
-
-WS     /ws/tasks/{id}          # progress stream
-```
-
-Authentication:
+For the worker:
 
 ```bash
-# JWT
-curl -H "Authorization: Bearer $TOKEN" https://api.example.com/v1/tasks
-
-# API Key
-curl -H "X-API-Key: dck_..."   https://api.example.com/v1/tasks
+celery -A app.workers.celery_app worker -l info --app=app.workers.celery_app -C 2
 ```
 
-Full reference: [docs/api.md](docs/api.md).
-
----
-
-## Architecture
+## Repo layout
 
 ```
-        ┌──────────────┐
-        │   Browser    │
-        └──────┬───────┘
-               │ HTTPS
-        ┌──────▼───────┐
-        │     Nginx    │  TLS, rate-limit, gzip, security headers
-        └──────┬───────┘
-               │
-   ┌───────────┴───────────┐
-   │                       │
-┌──▼─────────┐      ┌──────▼──────┐
-│ React SPA  │      │  FastAPI    │  ── asyncpg ──▶  Postgres
-│ (nginx)    │      │  (uvicorn)  │  ── redis  ──▶  Redis (broker + pubsub)
-└────────────┘      └──────┬──────┘  ── boto3  ──▶  MinIO / S3
-                           │
-                  ┌────────┴────────┐
-                  │  Celery worker  │  ── soffice · pandoc · tesseract · weasyprint
-                  └────────────────┘
-                  ┌────────────────┐
-                  │  Celery beat   │  ── expiry · cleanup · webhook retries
-                  └────────────────┘
+backend/    FastAPI + Celery
+frontend/   React + Vite + Tailwind + Zustand
+miniprogram/  Taro (compiles to weapp / h5 / alipay)
+deploy/     nginx, prometheus, grafana, k8s
+docker-compose*.yml
+Makefile
 ```
 
-See [docs/architecture.md](docs/architecture.md) for the full picture.
+## API surface
 
----
+- `POST /v1/auth/{register,login,refresh,logout}`
+- `POST /v1/auth/password-reset/{request,confirm}`
+- `POST /v1/auth/email-verify/{request,confirm}`
+- `POST /v1/auth/totp/{setup,verify,disable}`
+- `GET  /v1/users/me`, `PATCH /v1/users/me`
+- `POST /v1/files/uploads`, `GET /v1/files/{id}`, `GET /v1/files/{id}/download`
+- `POST /v1/convert`, `GET /v1/tasks/{id}`, `POST /v1/tasks/{id}/{retry,cancel}`
+- `POST /v1/batches`, `GET /v1/batches/{id}`
+- `GET  /v1/formats`  (full graph, frontend uses this to build the format picker)
+- `POST /v1/webhooks`, etc.
+- `WS   /v1/ws/tasks/{id}` for progress
 
-## Repository layout
+OpenAPI at `/docs` in dev.
 
+## Things I left rough
+
+A list so I don't forget, in priority order:
+
+- `backend/app/converters/image/image_converter.py` — EXIF orientation handling
+  for CMYK TIFF input is patchy. PIL flips it, then we re-encode, sometimes
+  the alpha channel is dropped. Tested on a known-bad scan and got wrong colors.
+  TODO: route through a `pillow` helper that strips profiles first.
+- `backend/app/workers/cleanup.py:zombie_requeue` — there's a race where two
+  workers both see the same zombie and both re-enqueue it. Idempotency key on
+  the task would fix this, but right now we just rely on the dedup window in
+  the dispatcher. Acceptable for now, not for a million tasks/day.
+- `backend/app/services/result_cache.py` — Redis cache for completed tasks.
+  Hit rate is good in the common case (user re-downloads), but the TTL
+  refresh on read is off-by-one. Need to fix and add a metric.
+- `backend/app/converters/document/docx_converter.py:to_pdf` — falls back to
+  LibreOffice when pandoc can't render embedded SVGs. The LO path is
+  ~5x slower. Not worth optimizing until we hit >100 PDF req/min.
+- `backend/app/api/v1/routes/convert.py` — accepts `target_format` from query
+  string, but a few clients send it in the body. The OpenAPI spec says query
+  only, but we tolerate body. Pick one. (Issue: #14 in my head, not a real one)
+- Frontend `useTaskProgress` reconnects on close but doesn't back off
+  exponentially. Cheap to fix, just haven't.
+- Mini-program: progress bar in `task-detail` is not yet bound to the WS
+  channel — we still poll. WS is wired up in `api/client.ts` and `stores/auth.ts`
+  but the task page falls back to the REST endpoint. PR ready in `feature/mp-ws`.
+
+If you spot a real bug not in this list, please open an issue.
+
+## Tests
+
+```bash
+make test               # full suite
+make test-fast          # skip integration
+cd frontend && pnpm test
 ```
-DocFormatConverter/
-├── backend/                     # FastAPI app
-│   ├── app/
-│   │   ├── api/v1/routes/      # auth, files, convert, tasks, batches, ...
-│   │   ├── converters/          # converter registry + backends + per-format impls
-│   │   ├── core/                # security, magic_bytes, sanitizers, rate_limit
-│   │   ├── db/models/           # SQLAlchemy 2.0 async models
-│   │   ├── observability/       # prometheus + otel
-│   │   ├── schemas/             # Pydantic v2 request/response models
-│   │   ├── services/            # business logic
-│   │   ├── storage/             # S3 + local adapters
-│   │   ├── workers/             # Celery tasks
-│   │   ├── websocket/           # WS manager + pubsub
-│   │   └── main.py              # app factory + lifespan
-│   ├── alembic/                 # migrations
-│   └── tests/                   # pytest + httpx
-├── frontend/                    # React + TS + Vite + Tailwind
-│   ├── src/{pages,components,stores,api,hooks,i18n,utils,types}
-│   ├── Dockerfile
-│   └── nginx.conf
-├── deploy/
-│   ├── nginx/                   # TLS termination config
-│   ├── prometheus/              # scrape + alert rules
-│   ├── grafana/                 # datasource + dashboard provisioning
-│   ├── k8s/                     # Deployment / Service / Ingress / HPA / PVC
-│   └── scripts/                 # backup / restore / cert / healthcheck
-├── entrypoints/                 # container entrypoint (migrate, api, worker, beat)
-├── docs/                        # architecture · api · deployment · security · operations
-├── .github/workflows/           # CI: backend, frontend, docker, security
-├── pyproject.toml               # backend tooling + deps
-├── Makefile                     # dev shortcuts
-└── docker-compose.yml           # production stack
-```
 
----
+I aim for ~80% on the backend. The converter layer is the lowest coverage
+because most of the work is shelling out, which a unit test can't really
+cover without a 200MB LibreOffice fixture.
 
-## Security
+## Security notes
 
-DocFormatConverter follows OWASP recommendations:
+- JWT signed with RS256. Private key never leaves the API host.
+- File uploads: magic-byte sniff before any processing. The antivirus
+  scanner is a stub (no ClamAV in dev) — wire it up via `core/antivirus.py`.
+- API keys use a 32-char random prefix + SHA-256 hash. Constant-time
+  compare in `core/security.py`.
+- All outgoing webhook URLs are SSRF-checked against the private/loopback
+  ranges in `core/ssrf.py`.
+- CORS is locked to the configured origins, not `*`.
 
-* **Passwords**: Argon2id (time=3, memory=64MiB, parallelism=4) with per-user salt
-* **JWT**: RS256 (asymmetric) — private key in `/app/keys/`, public key for verifiers
-* **API Keys**: `dck_live_<32 random bytes>`, stored as SHA-256 hash, prefix kept for UX
-* **Magic bytes**: every upload is sniffed with `filetype` + custom text heuristic; MIME mismatch → 415
-* **Path traversal**: every filename sanitized; downloads `safe_join`'d
-* **Antivirus**: optional ClamAV scan before conversion (configurable fail-open/fail-closed)
-* **Rate limit**: per-IP + per-user token-bucket via `slowapi` + Redis
-* **CSP / HSTS / Referrer-Policy / X-Frame-Options** on every response
-* **CORS**: allow-list of origins (no `*` in production)
-* **Webhook signatures**: HMAC-SHA256 with replay protection (timestamp in header)
-* **Audit log**: every privileged action written to `audit_log` (admin-only GET)
+## Performance
 
-See [docs/security.md](docs/security.md) for the full threat model and
-hardening checklist.
+Numbers from `make load-smoke` on my laptop (16 cores, NVMe, no GPU):
 
----
+- PDF → DOCX: ~1.8s/10MB
+- DOCX → PDF: ~2.4s/10MB
+- PNG → WebP:  ~40ms/2MB
+- CSV → XLSX:  ~120ms/100k rows
 
-## Operations
-
-* **Backups**: `deploy/scripts/backup.sh` — Postgres logical dump + MinIO snapshot
-* **Restore**: `deploy/scripts/restore.sh <archive.tar.gz>`
-* **Health**: `/healthz` (liveness) and `/readyz` (deep, with DB + storage checks)
-* **Metrics**: `/metrics` (Prometheus exposition)
-* **Logs**: structured JSON to stdout, scraped by Loki/Vector
-* **Alerts**: see `deploy/prometheus/rules/docconv.yml`
-* **Migrations**: `alembic -c backend/alembic.ini upgrade head` (auto-run on API boot)
-
----
-
-## Documentation
-
-* [Architecture](docs/architecture.md)
-* [API reference](docs/api.md)
-* [Deployment](docs/deployment.md) — Docker · Compose · Kubernetes · Helm
-* [Security](docs/security.md) — threat model · hardening · compliance notes
-* [Operations](docs/operations.md) — runbook · metrics · backups
-
----
+Workers autoscale by `celery_queue_length` in K8s; the Helm chart is in
+`deploy/k8s/`.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See `LICENSE`.
 
-## Acknowledgements
+## Contact
 
-Built on the shoulders of giants: FastAPI, SQLAlchemy, Celery, React, Vite,
-Tailwind, LibreOffice, Pandoc, Tesseract, WeasyPrint, Pillow, Argon2-cffi,
-PyJWT, structlog, and many others. See `pyproject.toml` for the full list.
+Open an issue. I read them.
+
+— [@badhope](https://github.com/badhope)

@@ -1,55 +1,71 @@
 # Changelog
 
-All notable changes to DocFormatConverter are documented in this file.
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+All notable changes are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/)
+and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [1.0.0] — 2026-06-01
+## [Unreleased]
+
+### In progress
+- WebSocket progress for the mini-program task-detail page (branch
+  `feature/mp-ws`).
+- Real antivirus integration. Right now `core/antivirus.py` returns
+  "clean" for everything. ClamAV is the likely backend, but it adds
+  ~600MB to the worker image and I haven't measured the latency hit.
+- Per-tenant rate limits. The current limiter is global.
+
+## [0.3.0] - 2026-06-02
 
 ### Added
-- Full rewrite of the original `badhope/DocFormatConverter` repository.
-- FastAPI backend with async SQLAlchemy 2.0 + Alembic migrations.
-- Celery worker pool for asynchronous conversions, with beat-scheduled cleanup.
-- React 18 + TypeScript + Vite + Tailwind frontend.
-- 40+ supported formats across documents, spreadsheets, presentations,
-  markup, structured data, images, and ebooks.
-- Pluggable storage layer (local FS / S3 / MinIO) with the same interface.
-- Authentication: Argon2id passwords + RS256 JWT + scoped API keys.
-- Magic-byte validation, optional ClamAV antivirus, path-traversal protection.
-- Sandboxed subprocess execution with rlimit + setsid + wall-clock timeout.
-- Rate limiting via `slowapi` + Redis (per-IP, per-user, per-route).
-- HMAC-SHA256 signed webhook delivery with timestamp + replay protection.
-- WebSocket progress feed via Redis pub/sub.
-- Prometheus metrics, OpenTelemetry tracing, structured JSON logs.
-- Full Kubernetes manifests, production docker-compose, nginx TLS config.
-- CI: backend (lint + typecheck + tests + bandit), frontend (lint + typecheck + build + test),
-  Docker images (ghcr.io), security scans (pip-audit, bandit, CodeQL, Trivy, TruffleHog).
-- Backup/restore scripts, Let's Encrypt issuer, healthcheck, init-minio.
-- Comprehensive documentation: architecture, API reference, deployment,
-  security, operations, contributing.
+- WeChat mini-program via Taro 3.6. Compiles to weapp, h5, and alipay
+  from a single codebase.
+- WS endpoint for live task progress. Used by the web frontend; the
+  mini-program is still polling.
+- Email verification + TOTP 2FA + password reset. All three were
+  requested by the same person, who is now the only user that uses
+  any of them. Whatever, it's done.
+- Per-user API keys, with a 32-char prefix shown once and a SHA-256
+  hash stored in the DB.
+- Webhook delivery with HMAC-SHA256 signatures and exponential
+  backoff (1m, 5m, 30m, 2h, 12h, 24h, then dead-letter).
+- Batch conversion: zip up to 200 files in one request.
+- Idempotency keys on POST /convert. Same key returns the same task,
+  no duplicate work.
 
 ### Changed
-- **Replaced** the legacy `config.yaml` (YAML) with Pydantic v2 settings
-  loaded from environment variables (12-factor).
-- **Replaced** the Flask-style `gunicorn app:app` startup with
-  `uvicorn app.main:app` (the original requirements.txt was self-contradictory).
-- **Replaced** the `wkhtmltopdf` backend (deprecated, multiple CVEs) with
-  WeasyPrint + LibreOffice + headless Chromium pathways.
-- **Replaced** the unmaintained `PyPDF2` with `pypdf` and `pdfplumber`.
+- Storage: now uses streaming uploads (`StreamingResponse`) instead of
+  buffering whole files in memory. Old code OOM'd on a 4GB PDF.
+- JWT: switched from HS256 to RS256. The shared-secret setup was
+  fine in the single-service days but the moment we added a second
+  replica, the secrets got out of sync in a way I don't want to debug
+  again.
+- Scheduler: Croner is gone, replaced by APScheduler. The cron syntax
+  was the same but the threading model was less surprising.
+
+### Fixed
+- Cleanup worker was hard-deleting user-requested soft deletes. Added
+  a `deleted_reason` column and only purge rows where the reason is
+  `retention_elapsed` past the grace period. (See commit history;
+  this was the bug that almost nuked a real user's data.)
+- The `/v1/formats` endpoint used to recompute the full graph on
+  every call. Cached in Redis with a 5-minute TTL, invalidated on
+  converter registration.
+- `useTaskProgress` no longer hammers the server on reconnect: it
+  waits for the next natural tick. Tiny fix, real impact on a flaky
+  network.
+
+## [0.2.0] - 2026-04-15
+
+### Added
+- Frontend: React + Vite + Tailwind, replacing the original Vue 3
+  prototype. Faster HMR, better TS story.
+- WebSocket progress replaced the old "refresh the page" UX.
+- Storage backend: MinIO for dev, S3 for prod. Same interface.
 
 ### Removed
-- All legacy YAML configuration that hard-coded `cors_origins: "*"`,
-  empty API-key enforcement, plaintext DB credentials, and missing
-  rate-limit / magic-byte / antivirus checks. The original repo is
-  preserved in `archive/` for reference.
+- Vue 3 prototype. Not in git history, just gone.
 
-### Security
-- Per-user Argon2id parameters; configurable cost.
-- RS256 JWT keys generated on first start, mountable in production.
-- API keys stored as SHA-256 hash; prefix retained for UX.
-- All API errors return stable codes and never leak internal state.
-- Strict CORS allow-list (no wildcard in production).
-- HSTS preload header on every response.
-- Audit log of every privileged action.
+## [0.1.0] - 2026-02-01
 
-[1.0.0]: https://github.com/badhope/DocFormatConverter/releases/tag/v1.0.0
+First version that anyone other than me used. It converted PDFs to
+DOCX and that was it. Still in a private repo; some of those code
+paths survive in `converters/document/pdf_converter.py`.

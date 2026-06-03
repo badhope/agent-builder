@@ -1,8 +1,14 @@
 # Architecture
 
+> A drawing of the boxes, and a few notes about *why* the boxes are
+> shaped the way they are. If you just want to "run it", see
+> [deployment.md](deployment.md). If you want to change something,
+> read this first — most "obvious" refactors break the assumptions
+> in the pipeline below.
+
 ## High level
 
-DocFormatConverter is a stateless API in front of an async task pipeline.
+DocFormatConverter is a stateless API in front of an async task pipeline. The reason it is split this way is the *only* useful thing this service does — running a subprocess to convert a file — can take 50 ms or 50 seconds, and I did not want to make the HTTP request wait for the slow case. Everything else (auth, quota, metadata) is synchronous on the API.
 
 ```
                 ┌─────────────────┐

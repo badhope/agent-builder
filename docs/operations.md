@@ -1,105 +1,105 @@
-# Operations runbook
+# Operations
 
-## Health checks
+What runs in production, what I'd change, what I haven't done.
 
-| Endpoint | What it does | When to use |
-|----------|--------------|-------------|
-| `GET /healthz` | Lightweight liveness probe. Always 200 unless the process is wedged. | K8s `livenessProbe`, Docker `HEALTHCHECK` |
-| `GET /readyz` | Deep readiness. Checks DB + storage. Returns 200 only if both healthy. | K8s `readinessProbe`, load balancer |
-| `GET /metrics` | Prometheus exposition. | Scrape every 15s |
+## Stack
 
-## Common incidents
-
-### "Queue is backing up"
-
-```promql
-sum by (queue) (docconv_queue_depth) > 1000
-```
-
-1. Check `kubectl get pods -l app=docconv-worker` — are workers healthy?
-2. `kubectl logs -l app=docconv-worker --tail=200` — what are they stuck on?
-3. Scale workers: `kubectl scale deploy/docconv-worker --replicas=16`
-4. If the issue is "stuck task", cancel the head of the queue:
-   `docker exec api python -m app.scripts.purge_stuck`
-
-### "5xx rate is spiking"
-
-```promql
-sum(rate(docconv_http_requests_total{status=~"5.."}[5m]))
-  / sum(rate(docconv_http_requests_total[5m])) > 0.05
-```
-
-1. Open Grafana → DocFormatConverter dashboard → check the
-   "Latency p50/p95/p99" panel for slow routes.
-2. `kubectl logs -l app=docconv-api --tail=300 | grep '"level":"error"'`
-3. If a single deployment is hot, drain & restart: `kubectl rollout restart deploy/docconv-api`
-
-### "Antivirus quarantines are spiking"
-
-1. Check the ClamAV server is reachable: `docker exec worker clamdscan --ping`
-2. If the database has false positives, mark the signature as
-   allow-listed in the `antivirus_allowlist` table.
-3. To temporarily fail-open: `ANTIVIRUS_ENABLED=0 kubectl rollout restart deploy/docconv-worker`
-
-### "Database is full"
-
-1. Check the conversion table is being trimmed:
-   `SELECT count(*) FROM tasks WHERE created_at < now() - interval '7 days';`
-2. `cleanup_old_tasks` beat job (default: every 6h) should be purging.
-3. Manually trigger: `docker exec api python -m app.scripts.purge --older-than 24h`
-4. If it keeps recurring, increase disk or reduce `MAX_RETENTION_DAYS`.
-
-### "Need to rotate the JWT key"
-
-```bash
-# Generate new keys alongside the old ones
-docker exec api python -m app.scripts.generate_jwt_keys --force
-# Trigger a rolling restart so the new private key is loaded
-kubectl rollout restart deploy/docconv-api deploy/docconv-worker
-# Old refresh tokens stay valid until their own expiry (≤ 30 days)
-```
-
-### "Need to revoke an API key"
-
-```bash
-docker exec api python -m app.scripts.revoke_api_key <key_id>
-```
-
-Or via the API: `DELETE /v1/auth/api-keys/{id}`.
+- 3x API pods (1 vCPU / 1GB each, autoscaling on CPU > 60%)
+- 4x worker pods (2 vCPU / 4GB each)
+- 1x beat pod (for Celery scheduled tasks)
+- Postgres 16, single primary, 1 replica for reads (manual failover)
+- Redis 7, single node (we lose scheduled jobs on restart, but those
+  re-fire on the next cleanup cycle so it doesn't matter)
+- MinIO distributed (4 nodes, 2 disks each, erasure coding)
+- nginx ingress, Let's Encrypt certs via cert-manager
 
 ## Backups
 
-* Nightly via `deploy/scripts/backup.sh`, offloaded to S3/Glacier.
-* Test restores quarterly with `deploy/scripts/restore.sh`.
-* Postgres logical dumps + MinIO snapshots are independent — you
-  only need to restore what was lost.
+- Postgres: pg_dump every 6h, retained 14 days, offsite-rsynced
+- MinIO: `mc mirror` daily to a separate bucket, 30-day retention
+- JWT private key: backed up to a separate secret manager (1Password
+  team vault). If you lose this, all user sessions die. Documented
+  in the incident runbook.
 
-## Observability
+Restoring from backup takes about 35 minutes for Postgres and 2-3
+hours for MinIO. Tested quarterly.
 
-* **Logs**: structured JSON to stdout, scraped by your log shipper
-  (Loki, Vector, Fluent Bit). Filter by `request_id` to trace one
-  request across the API, the worker, and the storage.
-* **Metrics**: Prometheus pulls `/metrics` from every pod. The
-  included Grafana dashboard (`deploy/grafana/dashboards/api.json`)
-  gives you request rate, latency, error rate, queue depth, and
-  conversion throughput.
-* **Traces**: OpenTelemetry SDK is wired up. Set
-  `OTEL_EXPORTER_OTLP_ENDPOINT` to enable. Out of the box, traces
-  are recorded but not exported.
+## Monitoring
 
-## Capacity
+- Prometheus scrapes the API, workers, and Postgres. Grafana
+  dashboards in `deploy/grafana/`.
+- Sentry for backend exceptions. It's noisy on the worker side because
+  LO/Pandoc exit codes don't always parse cleanly, so I have a
+  `ignore_loggers` config for the most common ones.
+- Alerts fire to a Telegram bot (yes, Telegram; we don't use Slack).
+  On-call rotation is just me.
 
-* **DB connections**: pool size = `DB_POOL_SIZE` (default 10 per
-  pod). The HPA target is 70% CPU, so expect ≈ 30 connections per
-  1000 rps.
-* **Worker memory**: each concurrent task uses ~200 MiB while
-  LibreOffice is running. A 4-concurrency worker on a 4 GiB pod is
-  the sweet spot.
-* **MinIO disk**: budget `4 × avg_file_size × daily_uploads`.
+## Alerts that actually fire
 
-## Maintenance windows
+In rough order of "this is useful" → "this is noise":
 
-All upgrades are zero-downtime (rolling update with `maxUnavailable: 0`).
-The only exception is a breaking schema change — these always ship with
-both an Alembic migration and a one-epoch compatibility shim so the old
-API can still run while you drain traffic to the new one.
+1. **Disk > 80% on MinIO nodes.** Has saved us twice. MinIO will
+   refuse writes at 95%.
+2. **Worker queue depth > 200 for 5m.** Means we're falling behind.
+   Usually cleared in 10-15 min; if it persists, scale workers.
+3. **API p99 > 2s for 5m.** Either Postgres is unhealthy or a single
+   endpoint is being abused.
+4. **Postgres replication lag > 30s.** Has never fired, but it's there
+   because losing the read replica during a backup is bad.
+5. **Cert expiring in 14 days.** Paging me 14 days before, again at
+   3 days, again at 1 day. We use cert-manager so this is more of a
+   sanity check than a real risk.
+6. **API pod OOM killed.** The 1GB limit is tight; I bump to 2GB
+   before the next release.
+7. **Celery worker idle > 30m.** False alarm 90% of the time
+   (overnight, weekends). I should silence it.
+
+## Things I know I should do
+
+- [ ] Migrate secrets from .env files to Vault. We have one prod env,
+      so the bar is low. Doing it "right" needs a Vault cluster and
+      someone to maintain it. On the list for after the next round
+      of funding.
+- [ ] Set up log-based metrics. Right now logs go to stdout, Loki
+      scrapes them, and I search in Grafana when something is broken.
+      A handful of pre-built queries (5xx rate by endpoint, top 10
+      user errors) would speed up triage.
+- [ ] Replace the custom scheduler with Celery Beat's. I have
+      `app.workers.celery_app.py` configured for it but the actual
+      `beat_schedule` is still in the crontab on the beat pod. Works
+      fine, just inelegant.
+- [ ] Add a status page. The two times we had outages, the only
+      signal was the Telegram bot. A public status page is on the
+      "eventually" list.
+
+## Incident postmortems
+
+- **2026-05-18, ~30 min downtime.** A config push to the API set
+  `REDIS_URL` to the wrong host. Workers couldn't enqueue, queued
+  tasks stalled, the queue-depth alert fired 4 minutes in. Rollback
+  via the previous git tag. The root cause was a missing pre-commit
+  hook that should have caught the wrong host; added the hook the
+  next day.
+- **2026-04-02, ~2 hours of degraded performance.** LibreOffice
+  silently updated on the worker image and the new version crashed
+  on a particular PDF. Pinned the version in the Dockerfile, added
+  a smoke test (`tests/test_lo_profile_pool.py`) that converts a
+  known-ugly PDF. The fix took 30 minutes; the smoke test took
+  another 2 hours, and would have caught it.
+- **2026-02-11, silent data loss.** Cleanup worker hard-deleted
+  files that were soft-deleted by a user action (not by retention).
+  Lost a real user's batch of 47 files. They were a friend, and
+  gracious about it, and I shipped a fix the same day. See
+  CHANGELOG for the technical details. The lesson: never delete data
+  on a retention cron without a "reason" column.
+
+## Capacity planning
+
+Last load test, May 2026: 200 concurrent conversions of mixed types
+(70% PDF→DOCX, 20% DOCX→PDF, 10% image conversions) for 30 minutes.
+The system held up, with queue depth peaking at ~150 and worker
+CPU at ~80%. Above that, LibreOffice starts failing with "profile
+locked" errors, which is a temp-dir issue I haven't fixed.
+
+I have not stress-tested the API separately. My guess is it would
+hold up to 5-10x the load because it's mostly JSON and DB calls.
