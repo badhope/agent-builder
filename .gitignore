@@ -104,6 +104,10 @@ keys/
 *.key
 secrets/
 
+# ----- TypeScript build cache -----
+*.tsbuildinfo
+frontend/tsconfig.tsbuildinfo
+
 # ----- Logs -----
 logs/
 *.log
