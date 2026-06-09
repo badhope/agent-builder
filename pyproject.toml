@@ -65,7 +65,7 @@ dependencies = [
     "filetype==1.2.0",
 
     # Document processing — modern maintained forks
-    "pypdf==5.1.0",
+    "pypdf==6.10.2",
     "pdfplumber==0.11.4",
     "pdf2image==1.17.0",
     "pypandoc==1.13",
