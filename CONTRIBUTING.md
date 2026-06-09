@@ -1,81 +1,46 @@
 # Contributing
 
-Thanks for your interest in improving DocFormatConverter! 🎉
+Want to send a PR? Cool. Here's the flow.
 
-## Ground rules
+## Before you start
 
-* Be respectful. See [the Contributor Covenant](https://www.contributor-covenant.org/).
-* Don't commit secrets, API keys, or production data.
-* Don't open a PR that touches the public HTTP API without writing
-  the corresponding test and documentation.
-* Don't add a new runtime dependency without discussing it first.
+- **Open an issue first** if the change is non-trivial. I don't want you
+  to spend a weekend on something I'd have asked you to do differently.
+- Read the code that's already there. I try to keep it boring and
+  consistent. If you're adding a new pattern, it should fit.
+- Look at the README for how to install / run / test. Use the lockfile
+  that's checked in; don't regenerate it.
 
-## Local setup
+## Local checks
 
-```bash
-git clone https://github.com/badhope/DocFormatConverter.git
-cd DocFormatConverter
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-pre-commit install
-docker compose -f docker-compose.dev.yml up
-```
+Run whatever the project has: `pnpm test`, `pytest`, `cargo test`, etc.
+If linter / formatter configs are checked in, run them too. CI will
+catch what you missed, but a green push is faster than a red one.
 
-## Workflow
+## Commit messages
 
-1. Fork the repo.
-2. Create a branch: `git checkout -b feat/my-feature`
-3. Make your changes.
-4. `pre-commit run --all-files` (formatting, lint, secrets)
-5. `make test` (full pytest suite)
-6. `make lint`
-7. Push and open a PR. Fill out the template.
+I don't enforce Conventional Commits. Subject, blank line, body, done.
+If a commit fixes an issue, mention the issue number. Don't bother with
+emoji or "WIP" prefixes.
 
-## Code style
+## Pull requests
 
-* Python: `black` + `isort` + `ruff` (enforced by pre-commit).
-  Type hints on every public function. `mypy --strict` for new modules.
-* TypeScript: `prettier` + `eslint`. `tsc --strict`.
-* No trailing whitespace, no commented-out code, no `print()`
-  debugging in committed code.
+- Fill the PR template. One paragraph in the body is fine; screenshots
+  help for UI.
+- Keep the diff small. Squash before merging unless the history matters.
+- I'll review roughly in order of arrival. If CI is green and the change
+  does what the description says, I'll merge. I might push back on
+  architecture; that's not personal.
+- Don't commit secrets, generated build output, large binaries, or
+  someone else's code without a license.
 
-## Adding a new converter
+## What I won't merge
 
-1. Find or create a category under `backend/app/converters/`
-   (`documents/`, `images/`, `markup/`, `data/`, `ebooks/`).
-2. Write a class subclassing `BaseConverter`:
+- Drive-by refactors that don't fix a real problem.
+- New dependencies for trivial reasons.
+- Anything that breaks the existing API without a heads-up first.
 
-```python
-from app.converters.base import BaseConverter
-from app.converters.options import ConversionOptions
-from app.converters.result import ConversionResult
+## License
 
-class FooBarConverter(BaseConverter):
-    inputs = {"foo"}
-    outputs = {"bar"}
-    backend = "my-tool"
-
-    async def convert(self, src, dst, options: ConversionOptions) -> ConversionResult:
-        # ...
-        return ConversionResult(output=dst, output_format="bar", backend=self.backend)
-```
-
-3. Drop it in the file — the registry auto-discovers it on first
-   call to `get_registry()`. No central registration needed.
-4. Add a test in `backend/tests/test_format_registry.py`.
-5. Add a fixture in `backend/tests/fixtures/` (small sample input).
-6. Document the new conversion in `docs/api.md` (`/v1/formats/convertible`).
-
-## Releasing
-
-1. Bump the version in `pyproject.toml` and `frontend/package.json`.
-2. Update `CHANGELOG.md`.
-3. Tag: `git tag -s v1.2.3 -m "Release 1.2.3"`
-4. Push: `git push --follow-tags`
-5. The release workflow builds & pushes images to GHCR, drafts a
-   GitHub release with auto-generated notes.
-
-## Security
-
-Found a vulnerability? Email `security@docformatconverter.example.com`
-(do not open a public issue). See [docs/security.md](docs/security.md).
+By contributing, you agree your contribution is licensed under the same
+license as the rest of the project. See [`LICENSE`](./LICENSE).

@@ -1,24 +1,27 @@
-# Pull request template — keep changes small and focused.
-
 ## What
-<!-- Brief description of the change. -->
+
+<!-- One line: what this PR does -->
 
 ## Why
-<!-- Motivation, ticket, design notes. -->
+
+<!-- The reason. What problem does this fix / what value does it add? -->
 
 ## How
-<!-- Implementation notes, gotchas. -->
 
-## Testing
-- [ ] Unit tests added / updated
-- [ ] Integration tests added / updated
-- [ ] Manually verified locally
-- [ ] Lint / format / typecheck pass
+<!-- Approach, breaking changes, anything weird you did -->
 
-## Security & risk
-- [ ] No new secrets committed
-- [ ] No new deps with known CVEs
-- [ ] Migrations are backwards-compatible (additive only)
+## Tested
 
-## Screenshots / logs
-<!-- If relevant. -->
+<!-- How you tested. If you didn't, say so and tell me why -->
+
+## Checklist
+
+- [ ] I have read [`CONTRIBUTING.md`](./CONTRIBUTING.md)
+- [ ] Tests pass locally (and CI is green)
+- [ ] I didn't add any new linter / typecheck warnings
+- [ ] I didn't commit any secrets, build output, or large binaries
+- [ ] I added a `CHANGELOG.md` entry under "Unreleased" if it matters
+
+## Screenshots / Logs
+
+<!-- Drag in images for UI changes. Paste (redacted) logs for runtime changes. -->
