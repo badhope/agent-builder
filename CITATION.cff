@@ -7,7 +7,6 @@ authors:
   - family-names: badhope
     given-names: badhope
     alias: badhope
-    orcid: https://orcid.org/0000-0000-0000-0000
 identifiers:
   - type: url
     value: https://github.com/badhope/DocFormatConverter
@@ -16,6 +15,15 @@ type: software
 url: https://github.com/badhope/DocFormatConverter
 repository-code: https://github.com/badhope/DocFormatConverter
 keywords:
-  - open-source, software
+  - batch-converter
+  - document-converter
+  - docx
+  - file-converter
+  - format-converter
+  - html
+  - markdown
+  - online-tool
+  - open-source
+  - pdf
 abstract: >-
-  A document-conversion platform with Web UI, REST API, and WeChat mini-program from a single Python backend. ~20 source/target pairs (PDF, DOCX, XLSX, PPTX, Markdown, HTML, images, data), batch up to 200 files, LibreOffice/Pandoc/Pillow/WeasyPrint/Tesseract backends, JWT auth with 2FA, S3/MinIO, webh
+  Document conversion from one Python backend. Web UI + REST API + WeChat mini-program, ~20 source/target pairs (PDF, DOCX, XLSX, PPTX, Markdown, HTML, images, data). LibreOffice / Pandoc / Pillow / WeasyPrint under the hood, JWT + 2FA + S3 + webhooks around it.
