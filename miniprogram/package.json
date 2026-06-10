@@ -47,6 +47,6 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "sass": "^1.71.0",
     "typescript": "^5.4.0",
-    "webpack": "5.90.0"
+    "webpack": "5.104.1"
   }
 }
