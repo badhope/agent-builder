@@ -90,7 +90,7 @@ dependencies = [
     "bleach==6.2.0",
 
     # Image
-    "Pillow==11.1.0",
+    "Pillow==12.2.0",
     "pillow-heif==0.21.0",
     "cairosvg==2.9.0",
 
