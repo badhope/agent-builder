@@ -95,7 +95,7 @@ dependencies = [
     "cairosvg==2.9.0",
 
     # HTML → PDF
-    "weasyprint==63.1",
+    "weasyprint==68.0",
 
     # Storage
     "boto3==1.35.84",
