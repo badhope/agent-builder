@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software in academic work, please cite it using the
+  metadata below.
+title: DocFormatConverter
+authors:
+  - family-names: badhope
+    given-names: badhope
+    alias: badhope
+identifiers:
+  - type: url
+    value: https://github.com/badhope/DocFormatConverter
+license: MIT
+type: software
+url: https://github.com/badhope/DocFormatConverter
+repository-code: https://github.com/badhope/DocFormatConverter
+keywords:
+  - batch-converter
+  - document-converter
+  - docx
+  - file-converter
+  - format-converter
+  - html
+  - markdown
+  - online-tool
+  - open-source
+  - pdf
+abstract: >-
+  Document conversion from one Python backend. Web UI + REST API + WeChat mini-program, ~20 source/target pairs (PDF, DOCX, XLSX, PPTX, Markdown, HTML, images, data). LibreOffice / Pandoc / Pillow / WeasyPrint under the hood, JWT + 2FA + S3 + webhooks around it.
