@@ -79,7 +79,7 @@ dependencies = [
 
     # Data formats
     "pyyaml==6.0.2",
-    "lxml==5.3.0",
+    "lxml==6.1.0",
     "pandas==2.2.3",
     "xmltodict==0.14.2",
     "tomli==2.2.1; python_version < '3.11'",
