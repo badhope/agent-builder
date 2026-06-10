@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # ---------- Stage 1: build a virtualenv ----------
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 ENV PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
@@ -36,7 +36,7 @@ COPY backend/ /build/backend/
 RUN /opt/venv/bin/pip install --no-cache-dir -e .
 
 # ---------- Stage 2: runtime ----------
-FROM python:3.12-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

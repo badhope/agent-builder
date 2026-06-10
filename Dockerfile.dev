@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # Dev image: full source, hot-reload, debug enabled, no LibreOffice (use the
 # `converters` compose profile if you want it).
-FROM python:3.12-slim AS dev
+FROM python:3.14-slim AS dev
 
 ENV PIP_NO_CACHE_DIR=1 \
     PYTHONDONTWRITEBYTECODE=1 \
