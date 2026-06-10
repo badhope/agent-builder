@@ -25,104 +25,104 @@ classifiers = [
 
 dependencies = [
     # Web framework
-    "fastapi==0.115.6",
-    "uvicorn[standard]==0.34.0",
-    "python-multipart==0.0.27",
+    "fastapi==0.136.3",
+    "uvicorn[standard]==0.49.0",
+    "python-multipart==0.0.32",
 
     # Data validation & settings
-    "pydantic==2.10.4",
-    "pydantic-settings==2.7.0",
-    "email-validator==2.2.0",
+    "pydantic==2.13.4",
+    "pydantic-settings==2.14.1",
+    "email-validator==2.3.0",
 
     # Database
-    "sqlalchemy[asyncio]==2.0.36",
-    "asyncpg==0.30.0",
-    "alembic==1.14.0",
-    "psycopg[binary]==3.2.3",
+    "sqlalchemy[asyncio]==2.0.50",
+    "asyncpg==0.31.0",
+    "alembic==1.18.4",
+    "psycopg[binary]==3.3.4",
 
     # Redis / queue
-    "redis[hiredis]==5.2.1",
-    "celery[redis]==5.4.0",
-    "arq==0.26.3",
+    "redis[hiredis]==8.0.0",
+    "celery[redis]==5.6.3",
+    "arq==0.28.0",
 
     # Security
-    "argon2-cffi==23.1.0",
-    "pyjwt[crypto]==2.12.0",
-    "cryptography==46.0.7",
-    "python-jose[cryptography]==3.4.0",
+    "argon2-cffi==25.1.0",
+    "pyjwt[crypto]==2.13.0",
+    "cryptography==48.0.1",
+    "python-jose[cryptography]==3.5.0",
 
     # Rate limiting
     "slowapi==0.1.9",
-    "limits==3.13.0",
+    "limits==5.8.0",
 
     # HTTP / WebSocket clients (server-side use)
     "httpx==0.28.1",
-    "websockets==14.1",
-    "aiofiles==24.1.0",
+    "websockets==16.0",
+    "aiofiles==25.1.0",
 
     # File type detection
     "python-magic==0.4.27",
     "filetype==1.2.0",
 
     # Document processing — modern maintained forks
-    "pypdf==6.10.2",
-    "pdfplumber==0.11.4",
+    "pypdf==6.13.1",
+    "pdfplumber==0.11.9",
     "pdf2image==1.17.0",
-    "pypandoc==1.13",
-    "python-docx==1.1.2",
+    "pypandoc==1.17",
+    "python-docx==1.2.0",
     "openpyxl==3.1.5",
-    "xlrd==2.0.1",
+    "xlrd==2.0.2",
     "python-pptx==1.0.2",
     "odfpy==1.4.1",
-    "ebooklib==0.18",
-    "markdownify==1.0.0",
+    "ebooklib==0.20",
+    "markdownify==1.2.2",
 
     # Data formats
-    "pyyaml==6.0.2",
-    "lxml==6.1.0",
-    "pandas==2.2.3",
-    "xmltodict==0.14.2",
+    "pyyaml==6.0.3",
+    "lxml==6.1.1",
+    "pandas==3.0.3",
+    "xmltodict==1.0.4",
     "tomli==2.2.1; python_version < '3.11'",
 
     # Markup
-    "markdown==3.8.1",
-    "beautifulsoup4==4.12.3",
-    "bleach==6.2.0",
+    "markdown==3.10.2",
+    "beautifulsoup4==4.15.0",
+    "bleach==6.4.0",
 
     # Image
     "Pillow==12.2.0",
-    "pillow-heif==0.21.0",
+    "pillow-heif==1.3.0",
     "cairosvg==2.9.0",
 
     # HTML → PDF
-    "weasyprint==68.0",
+    "weasyprint==69.0",
 
     # Storage
-    "boto3==1.35.84",
-    "botocore==1.35.84",
+    "boto3==1.43.26",
+    "botocore==1.43.26",
 
     # Anti-virus (optional at runtime)
     "pyclamd==0.4.0",
 
     # Observability
-    "structlog==24.4.0",
-    "prometheus-client==0.21.1",
-    "opentelemetry-api==1.29.0",
-    "opentelemetry-sdk==1.29.0",
-    "opentelemetry-instrumentation-fastapi==0.50b0",
-    "opentelemetry-instrumentation-sqlalchemy==0.50b0",
-    "opentelemetry-instrumentation-redis==0.50b0",
-    "opentelemetry-instrumentation-celery==0.50b0",
-    "opentelemetry-instrumentation-httpx==0.50b0",
-    "opentelemetry-exporter-otlp-proto-grpc==1.29.0",
-    "sentry-sdk[fastapi]==2.19.2",
+    "structlog==26.1.0",
+    "prometheus-client==0.25.0",
+    "opentelemetry-api==1.42.1",
+    "opentelemetry-sdk==1.42.1",
+    "opentelemetry-instrumentation-fastapi==0.63b1",
+    "opentelemetry-instrumentation-sqlalchemy==0.63b1",
+    "opentelemetry-instrumentation-redis==0.63b1",
+    "opentelemetry-instrumentation-celery==0.63b1",
+    "opentelemetry-instrumentation-httpx==0.63b1",
+    "opentelemetry-exporter-otlp-proto-grpc==1.42.1",
+    "sentry-sdk[fastapi]==2.62.0",
 
     # CORS / misc
-    "pyyaml==6.0.2",
+    "pyyaml==6.0.3",
     "python-dotenv==1.2.2",
-    "tenacity==9.0.0",
-    "orjson==3.11.6",
-    "pybase64==1.4.1",
+    "tenacity==9.1.4",
+    "orjson==3.11.9",
+    "pybase64==1.4.3",
 ]
 
 [project.optional-dependencies]
@@ -145,13 +145,13 @@ dev = [
 ]
 worker = [
     # Workers may run without web server deps; explicit subset
-    "celery[redis]==5.4.0",
-    "redis[hiredis]==5.2.1",
-    "sqlalchemy[asyncio]==2.0.36",
-    "asyncpg==0.30.0",
-    "structlog==24.4.0",
-    "pydantic==2.10.4",
-    "pydantic-settings==2.7.0",
+    "celery[redis]==5.6.3",
+    "redis[hiredis]==8.0.0",
+    "sqlalchemy[asyncio]==2.0.50",
+    "asyncpg==0.31.0",
+    "structlog==26.1.0",
+    "pydantic==2.13.4",
+    "pydantic-settings==2.14.1",
 ]
 
 [project.urls]
