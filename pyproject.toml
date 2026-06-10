@@ -48,7 +48,7 @@ dependencies = [
     # Security
     "argon2-cffi==23.1.0",
     "pyjwt[crypto]==2.12.0",
-    "cryptography==44.0.0",
+    "cryptography==46.0.7",
     "python-jose[cryptography]==3.4.0",
 
     # Rate limiting
