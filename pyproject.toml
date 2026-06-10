@@ -85,7 +85,7 @@ dependencies = [
     "tomli==2.2.1; python_version < '3.11'",
 
     # Markup
-    "markdown==3.7",
+    "markdown==3.8.1",
     "beautifulsoup4==4.12.3",
     "bleach==6.2.0",
 
