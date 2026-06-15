@@ -127,7 +127,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest==9.0.3",
+    "pytest==9.1.0",
     "pytest-asyncio==1.4.0",
     "pytest-cov==7.1.0",
     "httpx==0.28.1",
@@ -135,10 +135,10 @@ dev = [
     "factory-boy==3.3.3",
     "freezegun==1.5.5",
     "black==26.5.1",
-    "ruff==0.15.16",
+    "ruff==0.15.17",
     "mypy==2.1.0",
     "bandit==1.9.4",
-    "pip-audit==2.10.0",
+    "pip-audit==2.10.1",
     "pre-commit==4.6.0",
     "types-PyYAML",
     "types-python-dateutil",
